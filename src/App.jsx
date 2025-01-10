@@ -23,24 +23,38 @@ import React, { useState, useEffect } from 'react';
     );
 
     export default function App() {
-      const [marketData, setMarketData] = useState([]);
+      const [historicalData, setHistoricalData] = useState([]);
       const [botStatus, setBotStatus] = useState('Stopped');
 
       useEffect(() => {
-        fetchMarketData();
+        fetchHistoricalData();
       }, []);
 
-      const fetchMarketData = async () => {
+      const fetchHistoricalData = async () => {
         try {
-          const response = await axios.get('http://localhost:3000/api/market-data');
-          setMarketData(response.data);
+          const response = await axios.get('/api/historical-data', {
+            params: {
+              instrument: 'EUR_USD',
+              granularity: 'M1',
+              count: 100,
+            },
+          });
+          setHistoricalData(response.data);
         } catch (error) {
-          console.error('Error fetching market data:', error);
+          console.error('Error fetching historical data:', error);
         }
       };
 
-      const handleStartBot = () => {
-        setBotStatus('Running');
+      const handleStartBot = async () => {
+        try {
+          await axios.post('/api/place-trade', {
+            instrument: 'EUR_USD',
+            units: 1000,
+          });
+          setBotStatus('Running');
+        } catch (error) {
+          console.error('Error starting bot:', error);
+        }
       };
 
       const handleStopBot = () => {
@@ -48,11 +62,11 @@ import React, { useState, useEffect } from 'react';
       };
 
       const chartData = {
-        labels: marketData.length > 0 ? marketData.map((data) => data.timestamp) : [],
+        labels: historicalData.length > 0 ? historicalData.map((candle) => candle.time) : [],
         datasets: [
           {
             label: 'Price',
-            data: marketData.length > 0 ? marketData.map((data) => data.price) : [],
+            data: historicalData.length > 0 ? historicalData.map((candle) => candle.mid.c) : [],
             borderColor: 'rgba(75, 192, 192, 1)',
             fill: false,
           },
@@ -64,10 +78,10 @@ import React, { useState, useEffect } from 'react';
           <h1>Trading App</h1>
           <div className="dashboard">
             <div className="chart">
-              {marketData.length > 0 ? (
+              {historicalData.length > 0 ? (
                 <Line data={chartData} />
               ) : (
-                <p>Loading market data...</p>
+                <p>Loading historical data...</p>
               )}
             </div>
             <div className="controls">
